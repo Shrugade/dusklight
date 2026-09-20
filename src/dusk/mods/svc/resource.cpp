@@ -1,6 +1,6 @@
 #include "registry.hpp"
 
-#include "aurora/lib/logging.hpp"
+#include <borealis/log.hpp>
 #include "dusk/mods/loader/loader.hpp"
 #include "mods/svc/resource.h"
 
@@ -14,7 +14,7 @@
 namespace dusk::mods::svc {
 namespace {
 
-aurora::Module Log("dusk::mods::resource");
+constexpr borealis::Log Log{"dusk::mods::resource"};
 
 // Allocations by owning mod, so buffers still live when a mod detaches can be freed.
 std::unordered_map<void*, const LoadedMod*> s_buffers;
@@ -35,6 +35,10 @@ void resource_remove_mod(LoadedMod& mod) {
     }
 }
 
+std::string prefix_path(const char* relativePath) {
+    return fmt::format("res/{}", relativePath);
+}
+
 ModResult resource_load(ModContext* context, const char* relativePath, ResourceBuffer* outBuffer) {
     if (outBuffer == nullptr || outBuffer->struct_size < sizeof(ResourceBuffer)) {
         return MOD_INVALID_ARGUMENT;
@@ -46,7 +50,7 @@ ModResult resource_load(ModContext* context, const char* relativePath, ResourceB
         return MOD_INVALID_ARGUMENT;
     }
 
-    const auto entry = fmt::format("res/{}", relativePath);
+    const auto entry = prefix_path(relativePath);
     std::vector<u8> data;
     try {
         data = mod->bundle->readFile(entry);
@@ -91,10 +95,31 @@ void resource_free(ModContext* context, ResourceBuffer* buffer) {
     buffer->size = 0;
 }
 
+
+bool file_exists(ModContext* ctx, char const* relative_path) {
+    auto* mod = mod_from_context(ctx);
+    if (mod == nullptr || relative_path == nullptr || !is_safe_resource_path(relative_path)) {
+        return MOD_INVALID_ARGUMENT;
+    }
+
+    return mod->bundle->file_exists(prefix_path(relative_path));
+}
+
+bool directory_exists(ModContext* ctx, char const* relative_path) {
+    auto* mod = mod_from_context(ctx);
+    if (mod == nullptr || relative_path == nullptr || !is_safe_resource_path(relative_path)) {
+        return MOD_INVALID_ARGUMENT;
+    }
+
+    return mod->bundle->directory_exists(prefix_path(relative_path));
+}
+
 constexpr ResourceService s_resourceService{
     .header = SERVICE_HEADER(ResourceService, RESOURCE_SERVICE_MAJOR, RESOURCE_SERVICE_MINOR),
     .load = resource_load,
     .free = resource_free,
+    .file_exists = file_exists,
+    .directory_exists = directory_exists,
 };
 
 }  // namespace
