@@ -23,6 +23,7 @@
 #include "dusk/livesplit.h"
 #include "dusk/presentation.hpp"
 #include "dusk/speedrun.h"
+#include "m_Do/m_Do_main.h"
 
 #include <aurora/gfx.h>
 #include <aurora/lib/window.hpp>
